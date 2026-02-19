@@ -199,7 +199,14 @@ w0:
 		lda #$00
 		sta $8000
 #endif
-#else		
+#elif defined(OSCAR_TARGET_GAMETANK)
+		sei
+		cld
+		ldx #$ff
+		txs
+		// Clear banking register to known state
+		byt 0x9c, 0x05, 0x20   // stz $2005
+#else
 		byt	0x0b
 		byt 0x08
 		byt	<OSCAR_BASIC_LINE
@@ -324,7 +331,7 @@ bcode:
 #endif
 
 spexit:
-#if defined(__ATARI__) || defined(OSCAR_TARGET_NES)
+#if defined(__ATARI__) || defined(OSCAR_TARGET_NES) || defined(OSCAR_TARGET_GAMETANK)
 		jmp spexit
 #else
 		lda	#$4c

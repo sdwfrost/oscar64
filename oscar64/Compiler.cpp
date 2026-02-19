@@ -133,6 +133,11 @@ bool Compiler::ParseSource(void)
 		mCompilationUnits->mSectionHeap->mSize = 256;
 		mCompilationUnits->mSectionBoot = mLinker->AddSection(Ident::Unique("boot"), LST_DATA);
 		break;
+	case TMACH_GAMETANK:
+		mCompilationUnits->mSectionStack->mSize = 1024;
+		mCompilationUnits->mSectionHeap->mSize = 1024;
+		mCompilationUnits->mSectionBoot = mLinker->AddSection(Ident::Unique("boot"), LST_DATA);
+		break;
 	}
 
 	mPreprocessor->mCompilerOptions = mCompilerOptions;
@@ -572,7 +577,7 @@ bool Compiler::GenerateCode(void)
 	{
 		if (mTargetMachine == TMACH_ATARI)
 			regionZeroPage = mLinker->AddRegion(identZeroPage, 0x00e0, 0x00ff);
-		else if (mCompilerOptions & (COPT_EXTENDED_ZERO_PAGE | COPT_TARGET_NES))
+		else if (mCompilerOptions & (COPT_EXTENDED_ZERO_PAGE | COPT_TARGET_NES | COPT_TARGET_GAMETANK))
 			regionZeroPage = mLinker->AddRegion(identZeroPage, 0x0080, 0x00ff);
 		else if (mTargetMachine == TMACH_PET_8K || mTargetMachine == TMACH_PET_16K || mTargetMachine == TMACH_PET_32K)
 			regionZeroPage = mLinker->AddRegion(identZeroPage, 0x00ed, 0x00f7);
@@ -585,10 +590,14 @@ bool Compiler::GenerateCode(void)
 
 	if (!regionStartup)
 	{
-		if (mCompilerOptions & (COPT_TARGET_PRG | COPT_TARGET_NES))
+		if (mCompilerOptions & (COPT_TARGET_PRG | COPT_TARGET_NES | COPT_TARGET_GAMETANK))
 		{
 			switch (mTargetMachine)
 			{
+			case TMACH_GAMETANK:
+				regionStartup = mLinker->AddRegion(identStartup, 0xff80, 0xfffa);
+				regionStartup->mCartridgeBanks = 1ULL << 63;
+				break;
 			case TMACH_MEGA65:
 				if (mCompilerOptions & COPT_NATIVE)
 					regionStartup = mLinker->AddRegion(identStartup, 0x2001, 0x2080);
@@ -755,7 +764,7 @@ bool Compiler::GenerateCode(void)
 	{
 		if (!regionMain)
 		{
-			if (!(mCompilerOptions & (COPT_TARGET_PRG | COPT_TARGET_NES)))
+			if (!(mCompilerOptions & (COPT_TARGET_PRG | COPT_TARGET_NES | COPT_TARGET_GAMETANK)))
 				regionMain = mLinker->AddRegion(identMain, 0x0900, 0x4700);
 			else if (regionBytecode)
 			{
@@ -897,6 +906,14 @@ bool Compiler::GenerateCode(void)
 					regionRom = mLinker->AddRegion(identRom, 0xc000, 0xff80);
 					regionRom->mCartridgeBanks = 1ULL << 31;
 					regionMain = mLinker->AddRegion(identMain, 0x0200, 0x0800);
+					break;
+				case TMACH_GAMETANK:
+					regionBoot = mLinker->AddRegion(identBoot, 0xfffa, 0x10000);
+					regionBoot->mCartridgeBanks = 1ULL << 63;
+					regionBoot->mSections.Push(mCompilationUnits->mSectionBoot);
+					regionRom = mLinker->AddRegion(identRom, 0xc000, 0xff80);
+					regionRom->mCartridgeBanks = 1ULL << 63;
+					regionMain = mLinker->AddRegion(identMain, 0x0200, 0x2000);
 					break;
 				}
 			}
@@ -1443,6 +1460,13 @@ bool Compiler::WriteOutputFile(const char* targetPath, DiskImage * d64)
 			printf("Writing <%s>\n", prgPath);
 		mLinker->WriteNesFile(prgPath, mTargetMachine);
 
+	}
+	else if (mCompilerOptions & COPT_TARGET_GAMETANK)
+	{
+		strcat_s(prgPath, "gtr");
+		if (mCompilerOptions & COPT_VERBOSE)
+			printf("Writing <%s>\n", prgPath);
+		mLinker->WriteGtrFile(prgPath);
 	}
 
 

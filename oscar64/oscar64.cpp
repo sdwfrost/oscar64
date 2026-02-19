@@ -565,6 +565,10 @@ int main2(int argc, const char** argv)
 			compiler->mTargetMachine = TMACH_ATARI;
 			compiler->AddDefine(Ident::Unique("__ATARI__"), "1");
 		}
+		else if (!strcmp(targetMachine, "gametank"))
+		{
+			compiler->mTargetMachine = TMACH_GAMETANK;
+		}
 		else
 			compiler->mErrors->Error(loc, EERR_COMMAND_LINE, "Invalid target machine option", targetMachine);
 
@@ -590,6 +594,14 @@ int main2(int argc, const char** argv)
 				break;
 			}
 			compiler->AddDefine(Ident::Unique("__NES__"), "1");
+		}
+		else if (compiler->mTargetMachine == TMACH_GAMETANK)
+		{
+			compiler->mCompilerOptions |= COPT_TARGET_GAMETANK;
+			compiler->mCompilerOptions |= COPT_EXTENDED_ZERO_PAGE;
+			compiler->mCompilerOptions |= COPT_NATIVE;
+			compiler->AddDefine(Ident::Unique("OSCAR_TARGET_GAMETANK"), "1");
+			compiler->AddDefine(Ident::Unique("__GAMETANK__"), "1");
 		}
 		else if (!strcmp(targetFormat, "prg"))
 		{

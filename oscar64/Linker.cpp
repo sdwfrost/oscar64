@@ -1351,6 +1351,53 @@ bool Linker::WriteNesFile(const char* filename, TargetMachine machine)
 		return false;
 }
 
+bool Linker::WriteGtrFile(const char* filename)
+{
+	FILE* file;
+	fopen_s(&file, filename, "wb");
+	if (file)
+	{
+		// GameTank ROM: 128 banks x 16KB = 2MB
+		// Oscar64 bank N (0-62) -> GT bank N*2 (banked, $8000-$BFFF)
+		// Oscar64 bank 63 (fixed) -> GT bank 127 ($C000-$FFFF)
+
+		static const int GT_NUM_BANKS = 128;
+		static const int GT_BANK_SIZE = 0x4000;
+
+		uint8 rom[GT_NUM_BANKS * GT_BANK_SIZE];
+		memset(rom, 0xff, sizeof(rom));
+
+		for (int i = 0; i < 64; i++)
+		{
+			if (mCartridgeBankUsed[i])
+			{
+				int gt_bank;
+				if (i == 63)
+					gt_bank = 127;
+				else
+					gt_bank = i * 2;
+
+				if (i == 63)
+				{
+					// Fixed bank: copy $C000-$FFFF
+					memcpy(rom + gt_bank * GT_BANK_SIZE, mCartridge[i] + 0xc000, GT_BANK_SIZE);
+				}
+				else
+				{
+					// Banked: copy $8000-$BFFF
+					memcpy(rom + gt_bank * GT_BANK_SIZE, mCartridge[i] + 0x8000, GT_BANK_SIZE);
+				}
+			}
+		}
+
+		ptrdiff_t done = fwrite(rom, 1, sizeof(rom), file);
+		fclose(file);
+		return done == sizeof(rom);
+	}
+	else
+		return false;
+}
+
 bool Linker::WritePrgFile(DiskImage* image, const char* filename)
 {
 	if (image->OpenFile(filename))

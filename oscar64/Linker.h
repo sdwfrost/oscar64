@@ -292,6 +292,7 @@ public:
 	bool WriteCrtFile(const char* filename, uint16 id, uint8 subtype, const char * cname);
 	bool WriteBinFile(const char* filename);
 	bool WriteNesFile(const char* filename, TargetMachine machine);
+	bool WriteGtrFile(const char* filename);
 	bool WriteMlbFile(const char* filename, TargetMachine machine);
 	bool WriteDbjFile(FILE * file);
 
