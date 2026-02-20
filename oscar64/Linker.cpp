@@ -1353,6 +1353,35 @@ bool Linker::WriteNesFile(const char* filename, TargetMachine machine)
 
 bool Linker::WriteGtrFile(const char* filename)
 {
+	// Copy initialized data from RAM region (mMemory) to ROM bank 63.
+	// The data init image goes right after code in ROM, so the CRT can
+	// find it at the CodeEnd symbol address.
+	LinkerRegion* romRegion = FindRegion(Ident::Unique("rom"));
+	LinkerRegion* mainRegion = FindRegion(Ident::Unique("main"));
+
+	if (romRegion && mainRegion)
+	{
+		int codeEnd = romRegion->mNonzero;    // where code section ends in ROM
+		int dataStart = mainRegion->mStart;    // RAM data start ($0200)
+		int dataEnd = mainRegion->mNonzero;    // end of initialized data in RAM
+		int dataSize = dataEnd - dataStart;
+
+		if (dataSize > 0)
+		{
+			if (codeEnd + dataSize > 0xFF80)
+			{
+				Location loc;
+				mErrors->Error(loc, ERRR_INSUFFICIENT_MEMORY,
+					"Initialized data does not fit in ROM after code");
+			}
+			else
+			{
+				memcpy(mCartridge[63] + codeEnd, mMemory + dataStart, dataSize);
+				mCartridgeBankUsed[63] = true;
+			}
+		}
+	}
+
 	FILE* file;
 	fopen_s(&file, filename, "wb");
 	if (file)

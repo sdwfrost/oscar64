@@ -18,9 +18,10 @@
 #define	regs		__regs
 
 
-void StackStart, StackEnd, BSSStart, BSSEnd, CodeStart, CodeEnd, ZeroStart, ZeroEnd;
+void StackStart, StackEnd, BSSStart, BSSEnd, CodeStart, CodeEnd, ZeroStart, ZeroEnd, DataStart, DataEnd;
 
 #pragma section(code, 0x0000, CodeStart, CodeEnd)
+#pragma section(data, 0x0000, DataStart, DataEnd)
 #pragma section(stack, 0x0000, StackStart, StackEnd)
 #pragma section(bss, 0x0000, BSSStart, BSSEnd)
 #pragma section(zeropage, 0x0000, ZeroStart, ZeroEnd)
@@ -206,6 +207,33 @@ w0:
 		txs
 		// Clear banking register to known state
 		byt 0x9c, 0x05, 0x20   // stz $2005
+
+		// Copy initialized data from ROM to RAM
+		// Source: CodeEnd (ROM address where data init image was placed by linker)
+		// Dest:   DataStart..DataEnd (RAM)
+		lda #<CodeEnd
+		sta addr
+		lda #>CodeEnd
+		sta addr + 1
+		lda #0
+		sta ip
+		ldx #>DataStart
+		ldy #<DataStart
+	dc0:
+		stx ip + 1
+		cpx #>DataEnd
+		bne dc1
+		cpy #<DataEnd
+		beq dc2
+	dc1:
+		lda (addr), y
+		sta (ip), y
+		iny
+		bne dc0
+		inc addr + 1
+		inx
+		bne dc0
+	dc2:
 #else
 		byt	0x0b
 		byt 0x08

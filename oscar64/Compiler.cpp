@@ -936,7 +936,10 @@ bool Compiler::GenerateCode(void)
 		if (regionRom)
 		{
 			regionRom->mSections.Push(mCompilationUnits->mSectionCode);
-			regionRom->mSections.Push(mCompilationUnits->mSectionData);
+			if (mCompilerOptions & COPT_TARGET_GAMETANK)
+				regionMain->mSections.Push(mCompilationUnits->mSectionData);
+			else
+				regionRom->mSections.Push(mCompilationUnits->mSectionData);
 		}
 		else
 		{
